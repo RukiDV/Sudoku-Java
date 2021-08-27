@@ -6,7 +6,6 @@ public class Main
 
     // TODO: comment code, to few comments and some of the existing are also outdated
     // TODO: write tests
-    // TODO: implement an output writer and an input reader to be able to write a sudoku to a file and also read it later on
     public static void main(String[] args)
     {
         int difficulty = askForDifficulty();
@@ -15,13 +14,16 @@ public class Main
         Board board = g.generateBoard(difficulty, bot);
         //bot.getSolution(board, 1);
         //System.out.println(Bot.solutionBoards.get(0));
+        board.setCurrentAsStart();
+        FileHandler fh = new FileHandler();
+//        fh.writeFile(board, "X:/Projects/Spiele/Sudoku/saves/one.sudoku");
+        board = fh.readFile("saves/one.sudoku");
         play(board, bot);
     }
 
     private static void play(Board b, Bot bot)
     {
         bot.solutionBoards.clear();
-        Board startingBoard = b.copy();
         Rules ruler = new Rules();
         System.out.println(b);
         System.out.println("Gib zuerst die Zeile, dann die Spalte und dann den Wert den du dort setzen möchtest ein.");
@@ -32,6 +34,9 @@ public class Main
             boolean valid = false;
             do
             {
+                // TODO: rework this input, the user needs to get an immediate response if she entered something wrong
+                String inputColumn = "";
+                String inputValue = "";
                 String inputLine = scanner.nextLine();
                 scanner.reset();
                 if (inputLine.toString().contains("solve"))
@@ -42,10 +47,18 @@ public class Main
                         return;
                     }
                 }
-                String inputColumn = scanner.nextLine();
-                scanner.reset();
-                String inputValue = scanner.nextLine();
-                scanner.reset();
+                else if (inputLine.toString().contains("save"))
+                {
+                    FileHandler fh = new FileHandler();
+                    fh.writeFile(b, "saves/one.sudoku");
+                }
+                else
+                {
+                    inputColumn = scanner.nextLine();
+                    scanner.reset();
+                    inputValue = scanner.nextLine();
+                    scanner.reset();
+                }
                 if ((inputLine.length() == 1 && Character.isDigit(inputLine.charAt(0))) && (inputColumn.length() == 1 && Character.isDigit(inputColumn.charAt(0)) && (inputValue.length() == 1 && Character.isDigit(inputValue.charAt(0)))))
                 {
                     line = Integer.parseInt(inputLine);
@@ -53,7 +66,7 @@ public class Main
                     value = Integer.parseInt(inputValue);
                     if ((line <= 9 && line > 0) && (column <= 9 && column > 0) && (value <= 9 && value >= 0))
                     {
-                        if (startingBoard.getField()[column - 1][line - 1] == 0)
+                        if (!b.isStartingValue(column - 1, line - 1))
                         {
                             b.setField(column - 1, line - 1, value);
                             valid = true;

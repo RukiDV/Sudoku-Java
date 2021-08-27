@@ -1,15 +1,18 @@
 public class Board
 {
-    private int[][] field;
+    private final int[][] field;
+    private final boolean[][] startValue;
 
     public Board()
     {
         field = new int[9][9];
+        startValue = new boolean[9][9];
         for (int i = 0; i < 9; i++)
         {
             for (int j = 0; j < 9; j++)
             {
                 field[i][j] = 0;
+                startValue[i][j] = false;
             }
         }
     }
@@ -24,9 +27,28 @@ public class Board
         this.field[column][line] = value;
     }
 
-    public void setCompleteField(int[][] field)
+    public boolean isStartingValue(int column, int line)
     {
-        this.field = field;
+        return startValue[column][line];
+    }
+
+    public void setAsStartValue(int column, int line)
+    {
+        startValue[column][line] = true;
+    }
+
+    public void setCurrentAsStart()
+    {
+        for (int i = 0; i < 9; i++)
+        {
+            for (int j = 0; j < 9; j++)
+            {
+                if (field[i][j] != 0)
+                {
+                    startValue[i][j] = true;
+                }
+            }
+        }
     }
 
     public String toString()
