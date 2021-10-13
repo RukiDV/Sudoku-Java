@@ -175,7 +175,7 @@ public class Bot
                 {
                     for (int k = 1; k <= 9; k++)
                     {
-                        if (ruler.checkNumberSquare(workBoard, i, j, k))
+                        if (ruler.checkNumber(workBoard, i, j, k))
                         {
                             arrayBoard.get(i).get(j).add(k);
                         }

@@ -53,29 +53,46 @@ public class Board
 
     public String toString()
     {
-        String output = "-----------------------------------------\n";
+        Rules ruler = new Rules();
+        String output = "\u001B[46m-----------------------------------------\u001B[0m\n";
         for (int i = 0; i < 9; i++)
         {
             for (int j = 0; j < 9; j++)
             {
                 if (j % 3 == 0)
                 {
-                    output += "||";
+                    output += "\u001B[46m||\u001B[0m";
                 }
                 else
                 {
                     output += "|";
                 }
+                output += " ";
                 if (field[j][i] == 0)
                 {
-                    output += "   ";
+                    output += " ";
+                }
+                else if (!isStartingValue(j, i))
+                {
+                    if (!ruler.checkNumber(this, j, i, field[j][i]))
+                    {
+                        output += "\u001B[31m";
+                    }
+                    else
+                    {
+                        output += "\u001B[32m";
+                    }
+                    output += field[j][i] + "\u001B[0m";
                 }
                 else
                 {
-                    output += " " + field[j][i] + " ";
+                    output += field[j][i];
                 }
+                output += " ";
             }
-            output += "||\n-----------------------------------------\n";
+            output += "\u001B[46m||\u001B[0m";
+            output += (i + 1) % 3 == 0 ? "\n\u001B[46m-----------------------------------------\u001B[0m\n"
+                    : "\n\u001B[46m--\u001B[0m-----------\u001B[46m--\u001B[0m-----------\u001B[46m--\u001B[0m-----------\u001B[46m--\u001B[0m\n";
         }
         return output;
     }
@@ -87,6 +104,10 @@ public class Board
         {
             for (int j = 0; j < 9; j++)
             {
+                if (startValue[i][j])
+                {
+                    board.setAsStartValue(i, j);
+                }
                 board.setField(i, j, this.field[i][j]);
             }
         }

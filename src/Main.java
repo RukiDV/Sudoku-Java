@@ -1,3 +1,4 @@
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Main
@@ -12,7 +13,8 @@ public class Main
         Bot bot = new Bot();
         Generator g = new Generator();
         Board board = g.generateBoard(difficulty, bot);
-        //bot.getSolution(board, 1);
+//        board = new Board();
+//        bot.getSolution(board, 0);
         //System.out.println(Bot.solutionBoards.get(0));
         board.setCurrentAsStart();
         FileHandler fh = new FileHandler();
@@ -52,6 +54,29 @@ public class Main
                     FileHandler fh = new FileHandler();
                     fh.writeFile(b, "saves/one.sudoku");
                 }
+                else if (inputLine.toString().contains("hint"))
+                {
+                    Board boardCopy = b.copy();
+                    System.out.println(bot.nextNumber(boardCopy));
+                    ArrayList<ArrayList<ArrayList<Integer>>> arrayBoard = bot.getOpportunities(boardCopy);
+                    // find column, line and size of the point with the least opportunities
+                    int c = 0;
+                    int l = 0;
+                    int size = 10;
+                    for (int i = 0; i < 9; i++)
+                    {
+                        for (int j = 0; j < 9; j++)
+                        {
+                            if (arrayBoard.get(i).get(j).size() < size)
+                            {
+                                c = i;
+                                l = j;
+                                size = arrayBoard.get(i).get(j).size();
+                            }
+                        }
+                    }
+                    System.out.println("size: " + size + ", column: " + c + ", line: " + l);
+                }
                 else
                 {
                     inputColumn = scanner.nextLine();
@@ -88,6 +113,7 @@ public class Main
             } while (!valid);
             System.out.println(b);
         }
+        System.out.println("Congratulations, you won!");
     }
 
     private static int askForDifficulty()

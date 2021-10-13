@@ -72,7 +72,7 @@ public class Rules
         return true;
     }
 
-    public boolean checkNumberSquare(Board b, int column, int line, int number)
+    public boolean checkNumber(Board b, int column, int line, int number)
     {
         Board boardCopy = b.copy();
         boardCopy.setField(column, line, number);
