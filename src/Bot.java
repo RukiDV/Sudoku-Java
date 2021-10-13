@@ -14,31 +14,45 @@ public class Bot
         ruler = new Rules();
     }
 
-    private synchronized void addSolution(Board b)
+    private void addSolution(Board b)
     {
         if (killThreads)
         {
             return;
         }
-        solutionBoards.add(b);
+        synchronized (solutionBoards)
+        {
+            solutionBoards.add(b);
+        }
 //        System.out.println(solutionBoards.get(solutionBoards.size() - 1));
 //        System.out.println("Solution added! New Size: " + solutionBoards.size());
     }
 
-    private static void checkAndDecrementThreadCount(int recursionDepth)
+    private void checkAndDecrementThreadCount(int recursionDepth)
     {
         if (recursionDepth == 0)
         {
+            // recursionDepth = 0 means that this thread is finished after the next return
+            // so the thread gets removed from the active thread list and the threadCounter gets decremented
+            // TODO: threads that finished their execution need to get joined
+            // probably save another ArrayList where all threads get saved that finished their execution
+            // the main threads always joins all threads in this list while waiting
+            synchronized (threads)
+            {
+                threads.remove(Thread.currentThread());
+            }
             threadCounter.decrementAndGet();
         }
     }
 
+    // solutionCount = 0 searches for every possible solution
     public int getSolution(Board b, int solutionCount)
     {
+        // create motherThread that starts searching for solutions and thereby also creates new threads
         threadCounter.incrementAndGet();
-        Thread t = new Thread(() -> solveBoard(b, 0));
-        t.start();
-        // solutionCount = 0 searches for every possible solution
+        Thread motherThread = new Thread(() -> solveBoard(b, 0));
+        motherThread.start();
+        // search for every possible solution, so just wait until all threads are finished
         if (solutionCount == 0)
         {
             while (threadCounter.get() > 0)
@@ -46,6 +60,8 @@ public class Bot
                 Thread.yield();
             }
         }
+        // search for solutionCount solutions, so check every time if there are already enough solutions found
+        // the other option is, that all threads finish without finding the desired count of solutions
         else
         {
             while (solutionBoards.size() < solutionCount && threadCounter.get() > 0)
@@ -55,48 +71,50 @@ public class Bot
         }
         // killThreads doesn't need to be thread safe, it is only set once here at this position
         killThreads = true;
+        // wait until all threads have finished their execution
+        // a thread can create a new thread and add it to the ArrayList while we are already iterating over it
+        // ArrayList isn't threadsafe, so don't use it in that way
         while (threadCounter.get() > 0) ;
         try
         {
-            for (int i = 0; i < threads.size(); ++i)
+            // join all threads
+            for (Thread t: threads)
             {
-                // there are no dead threads, because threads get created from lower to higher indices
-                // so if the joining starts at the lower indices
-                if (threads.get(i) != null && threads.get(i).isAlive())
+                if (t != null && t.isAlive())
                 {
-                    threads.get(i).join();
+                    t.join();
                 }
             }
             threads.clear();
-            t.join();
+            motherThread.join();
         }
         catch (InterruptedException e)
         {
             e.printStackTrace();
         }
+        // reset killThreads to be able to use this bot again
         killThreads = false;
         return solutionBoards.size();
     }
 
     public void solveBoard(Board b, int recursionDepth)
     {
+        // threads got ordered to finish, so just check if we are finished after this level and return
         if (killThreads)
         {
             checkAndDecrementThreadCount(recursionDepth);
             return;
         }
-        // copy Board if a guess was wrong
-        Board workBoard = b.copy();
         // fill board with unique numbers
-        while (nextNumber(workBoard)) ;
-        // when the board is finished assign current board to the given board, the current board will then be reached to the top
-        if (ruler.isBoardFinished(workBoard))
+        while (nextNumber(b)) ;
+        // when the board is finished, add current board to solutions
+        if (ruler.isBoardFinished(b))
         {
-            addSolution(workBoard);
+            addSolution(b);
             checkAndDecrementThreadCount(recursionDepth);
             return;
         }
-        ArrayList<ArrayList<ArrayList<Integer>>> arrayBoard = getOpportunities(workBoard);
+        ArrayList<ArrayList<ArrayList<Integer>>> arrayBoard = getOpportunities(b);
         // find column, line and size of the point with the least opportunities
         int column = 0;
         int line = 0;
@@ -121,14 +139,15 @@ public class Bot
         // size is always >= 2, because if size = 1 it would be a unique number for this field and hence already set
         for (int i = 0; i < size; i++)
         {
-            int threadIndex = threadCounter.getAndIncrement();
-            if (threadIndex < 14)
+            // get threadCounter and increment it if it is < 12
+            int threadIndex = threadCounter.getAndUpdate((value) ->
+                    value < 12 ? value + 1 : value);
+            if (threadIndex < 12)
             {
-                // TODO: ArrayList threads also saves the already dead threads, which is kind of unnecessary
-                Board threadRecursionBoard = workBoard.copy();
+                Board threadRecursionBoard = b.copy();
                 threadRecursionBoard.setField(column, line, arrayBoard.get(column).get(line).remove(arrayBoard.get(column).get(line).size() - 1));
                 Thread t = new Thread(() -> solveBoard(threadRecursionBoard, 0));
-                synchronized (this)
+                synchronized (threads)
                 {
                     threads.add(t);
                     t.start();
@@ -136,8 +155,7 @@ public class Bot
             }
             else
             {
-                threadCounter.decrementAndGet();
-                Board recursionBoard = workBoard.copy();
+                Board recursionBoard = b.copy();
                 recursionBoard.setField(column, line, arrayBoard.get(column).get(line).remove(arrayBoard.get(column).get(line).size() - 1));
                 solveBoard(recursionBoard, recursionDepth + 1);
             }
@@ -145,7 +163,7 @@ public class Bot
         checkAndDecrementThreadCount(recursionDepth);
     }
 
-    private ArrayList<ArrayList<ArrayList<Integer>>> getOpportunities(Board workBoard)
+    public ArrayList<ArrayList<ArrayList<Integer>>> getOpportunities(Board workBoard)
     {
         // save opportunities for a number field in an array for this field
         ArrayList<ArrayList<ArrayList<Integer>>> arrayBoard = new ArrayList<>();
@@ -186,7 +204,7 @@ public class Bot
         return arrayBoard;
     }
 
-    private boolean nextNumber(Board b)
+    public boolean nextNumber(Board b)
     {
         // finds the next unique number for the board and sets it, it will not always find a new number
         for (int i = 0; i < 9; i++)
@@ -197,7 +215,7 @@ public class Bot
                 {
                     for (int k = 1; k <= 9; k++)
                     {
-                        if (ruler.checkNumberSquare(b, i, j, k))
+                        if (ruler.checkNumber(b, i, j, k))
                         {
                             if (checkUnique(b, i, j, k))
                             {
